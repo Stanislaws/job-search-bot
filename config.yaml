@@ -1,0 +1,173 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  job-search-bot settings
+#  This is the file to edit when you want to tune the bot. You can edit it
+#  right on GitHub (open the file → pencil icon → Commit). The next morning's
+#  run picks up the change automatically.
+#
+#  Patterns below are case-insensitive regular expressions.
+#  \b = word boundary, so \bintern\b matches "intern" but not "internal".
+# ─────────────────────────────────────────────────────────────────────────────
+
+schedule:
+  timezone: America/Chicago
+  send_hour: 7                # the digest goes out on the first run at/after this local hour
+
+email:
+  subject: "🔎 {count} new data analyst jobs · {date}"
+  max_jobs: 30                # cap on jobs listed in one email
+  max_flagged: 8              # how many "likely scam" postings to show (so you learn the patterns)
+  send_when_empty: true       # still email "nothing new today" so you know the bot ran
+
+search:
+  # Free-text searches for the keyword-based sources (Adzuna, JSearch, Workday).
+  queries:
+    - data analyst intern
+    - data analytics intern
+    - business intelligence intern
+    - business analyst intern
+    - junior data analyst
+    - entry level data analyst
+  max_age_days: 21            # ignore postings older than this
+  keep_unknown_locations: true  # keep jobs whose location can't be identified (e.g. "Flexible")
+
+sources:
+  simplify_internships:
+    enabled: true
+    url: https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json
+  simplify_newgrad:
+    enabled: true
+    url: https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/dev/.github/scripts/listings.json
+  adzuna:                     # needs ADZUNA_APP_ID + ADZUNA_APP_KEY secrets (free key)
+    enabled: true
+    results_per_query: 50
+  jsearch:                    # needs RAPIDAPI_KEY secret; covers LinkedIn / Indeed / Glassdoor / ZipRecruiter
+    enabled: true
+    max_requests_per_run: 6   # free plan is ~200 requests/month → 6/day stays under it
+    date_posted: 3days
+  themuse:
+    enabled: true
+    categories: ["Data and Analytics", "Data Science"]
+    levels: ["Internship", "Entry Level"]
+    max_pages: 5
+  # Companies to watch directly on their own career sites (the most trustworthy source).
+  # Find the board name in the company's job URL, e.g. job-boards.greenhouse.io/<name>,
+  # jobs.lever.co/<name>, jobs.ashbyhq.com/<name>, <tenant>.wd1.myworkdayjobs.com/<site>.
+  greenhouse: [hudl]
+  lever: []
+  ashby: []
+  workday:
+    - {name: Nelnet, host: nelnet.wd1.myworkdayjobs.com, tenant: nelnet, site: MyNelnet}
+
+role:
+  # Title must match at least one of these. The weight is how strongly it counts toward fit (0–40).
+  title_patterns:
+    - {pattern: "data analy|analytics|business intelligence|\\bbi\\b|insights? analyst|reporting analyst|data visuali[sz]", weight: 40, label: "data/analytics title"}
+    - {pattern: "business analyst|business systems analyst|financial data|pricing analyst|risk analyst|operations analyst|marketing analyst|product analyst|research analyst|summer analyst", weight: 30, label: "analyst title"}
+    - {pattern: "data scien|machine learning|\\bai\\b|quantitative", weight: 25, label: "data science/AI title"}
+    - {pattern: "\\banalyst\\b", weight: 20, label: "general analyst title"}
+  # Titles containing any of these are dropped.
+  title_exclude:
+    - "\\b(senior|sr\\.?|lead|principal|staff|manager|director|head of|vp|vice president|chief|architect)\\b"
+    - "\\b(ii|iii|iv)\\b|level [2-9]"
+    - "data entry"            # low-skill and a favourite category for scams
+    - "data engineer|software engineer|developer|technician"
+    - "\\bph\\.?d\\b|doctoral|postdoc"
+    - "\\bteacher|tutor\\b|nurse|driver"
+  internship_pattern: "\\b(intern|internship|co-?op|summer analyst|fellowship)\\b"
+  entry_pattern: "\\b(junior|jr\\.?|entry|associate|new grad|graduate|early career|apprentice|trainee|analyst i)\\b"
+  max_years_experience: 2     # full-time jobs asking for more than this are dropped
+
+location:
+  # Fit bonus for places you'd especially like. First match wins.
+  preferred:
+    - {pattern: "lincoln", bonus: 10, label: "Lincoln"}
+    - {pattern: "omaha", bonus: 8, label: "Omaha"}
+    - {pattern: "nebraska|, ne\\b", bonus: 6, label: "Nebraska"}
+    - {pattern: "remote", bonus: 6, label: "Remote"}
+
+fit:
+  min_score: 40               # jobs below this fit score are not emailed
+  internship_bonus: 25
+  entry_bonus: 18
+  unspecified_level_bonus: 5
+  skills: [sql, python, "\\br\\b", tableau, "power bi", excel, statistics, looker, "\\bdax\\b", "a/b test", forecasting, "machine learning", snowflake, bigquery, pandas]
+  skill_points: 3
+  skill_cap: 15
+  # Extra points for things that match your background.
+  bonus_keywords:
+    - {pattern: "financ|fintech|banking|\\bbank\\b|lending|loan|credit|insurance|investment", bonus: 6, label: "finance"}
+    - {pattern: "spanish|portuguese|bilingual", bonus: 6, label: "languages"}
+    - {pattern: "sport|soccer|athlet", bonus: 4, label: "sports"}
+    - {pattern: "master'?s|graduate (student|intern)|\\bms\\b|\\bmba\\b", bonus: 6, label: "open to grad students"}
+  bonus_cap: 12
+  # Points taken away (job still shown if the total stays above min_score).
+  penalties:
+    - {pattern: "undergrad|bachelor'?s (students?|candidates?) only|sophomore|freshman|junior year", penalty: 15, label: "aimed at undergrads"}
+    - {pattern: "high school", penalty: 30, label: "high-school program"}
+
+work_authorization:
+  # Hard no: the job is dropped.
+  exclude:
+    - "u\\.?s\\.? citizenship (is )?required|citizenship is required"
+    - "must (be|hold) (a )?(u\\.?s\\.?|united states) citizen"
+    - "\\b(u\\.?s\\.? )?citizens? only\\b"
+    - "(u\\.?s\\.? citizens?|permanent residents?)\\s+(and|or)\\s+(u\\.?s\\.? )?(permanent residents?|green card holders?|citizens?)"
+    - "green card (holders? )?(only|required)"
+    - "security clearance|\\bts/?sci\\b|(top )?secret clearance|public trust"
+    - "\\bitar\\b|must be a u\\.?s\\.? person"
+    - "not (be )?open to (individuals|candidates|applicants|those) who (are|were) temporarily authorized"
+    - "(not|n't) (be )?(eligible|open|available|accepted) (for|to)[^.]{0,40}\\b(cpt|opt|f-?1|international students?|student visas?)"
+    - "\\b(cpt|opt|f-?1)\\b[^.]{0,30}\\b(not|cannot|can't) (be )?(accepted|eligible|considered|supported)"
+  # Shown with a ⚠ note. CPT doesn't require the employer to sponsor, so these can still work.
+  caution:
+    - "will not sponsor|won't sponsor|unable to sponsor|cannot sponsor|not (able to )?(provide|offer) (visa )?sponsorship|no (visa )?sponsorship|does not (offer|provide) sponsorship"
+    - "without (the need for )?(current or future |now or future )?(visa )?sponsorship"
+    - "now,? (or|nor) (at any point )?in the future,? require"
+  # Shown with a ✓ note.
+  positive:
+    - "\\bcpt\\b|curricular practical training|\\bopt\\b(?![- ]?(in|out))|\\bf-?1\\b|international students? (are )?(welcome|encouraged|eligible)"
+    - "(visa )?sponsorship (is )?(available|provided|offered)|will sponsor|offers sponsorship"
+  positive_bonus: 5
+
+pay:
+  # Postings matching these are dropped (you asked for paid roles only).
+  unpaid_patterns:
+    - "\\bunpaid\\b|\\bnon-?paid\\b"
+    - "for (academic )?credit only|academic credit (in lieu|instead) of pay"
+    - "no (monetary )?compensation|without compensation"
+    - "volunteer (position|role|opportunity|internship)"
+  min_hourly: 0               # set e.g. 18 to drop low-paying roles that do list pay
+
+legitimacy:
+  # Every posting starts at `baseline` and gains/loses points. 75+ = 🟢, 50–74 = 🟡, below 50 = 🔴.
+  baseline: 85
+  green_at: 75
+  yellow_at: 50
+  curated_bonus: 10           # human-curated lists (Simplify)
+  direct_ats_bonus: 10        # link goes straight to a real applicant-tracking system
+  trusted_ats_domains: [greenhouse.io, lever.co, ashbyhq.com, myworkdayjobs.com, myworkdaysite.com, smartrecruiters.com, icims.com, taleo.net, successfactors.com, successfactors.eu, jobvite.com, oraclecloud.com, ultipro.com, ukg.com, workforcenow.adp.com, bamboohr.com, paylocity.com, recruitee.com, eightfold.ai, pageuppeople.com, avature.net, phenompeople.com, rippling-ats.com, rippling.com]
+  shortener_domains: [bit.ly, tinyurl.com, t.co, goo.gl, rb.gy, cutt.ly, is.gd, shorturl.at]
+  personal_email_penalty: 25  # recruiter contact is @gmail.com / @yahoo.com / etc.
+  generic_company_penalty: 20 # "Confidential", "Hiring company", blank…
+  vague_description_penalty: 10
+  vague_description_chars: 250
+  stale_days: 45              # older than this → "possible ghost job"
+  stale_penalty: 10
+  pay_anomaly_penalty: 25
+  max_plausible_hourly: 65    # entry-level / intern pay above this is suspicious…
+  pay_anomaly_exempt_companies: "google|meta|jane street|citadel|two sigma|hudson river|jump trading|optiver|imc|susquehanna|de shaw|d\\. e\\. shaw|bridgewater|stripe|openai|anthropic|nvidia|apple|microsoft|amazon|netflix"
+  # Training-for-hire firms: not necessarily scams, but contracts often include long
+  # commitments or repayment clauses. Shown as 🟡 so you read the fine print.
+  training_programs: "synergisticit|revature|\\bmthree\\b|fdm group|skillstorm|smoothstack|genspark"
+  training_penalty: 20
+  red_flags:
+    - {pattern: "(pay|purchase|buy)\\s+(for\\s+)?(your\\s+)?(own\\s+)?(training|equipment|software|starter kit|certification)|(training|registration|application|processing|onboarding) fee", weight: 35, reason: "asks you to pay for training/equipment"}
+    - {pattern: "(deposit|cash|receive)\\s+(a|the|your)\\s+((?!background|credit|drug|reference|security)\\w+\\s+)?(check|cheque)|(check|cheque)\\s+(to|for you to)\\s+deposit|mobile deposit|(cashier'?s|certified) check|(send|wire|transfer)\\s+(back\\s+)?(the\\s+)?(remaining|excess|leftover)", weight: 40, reason: "check-deposit / send-money-back pattern"}
+    - {pattern: "\\b(telegram|whatsapp|wickr|signal app|google hangouts)\\b|interview[^.]{0,30}(via|over|through)\\s+(text|chat|instant messag)", weight: 30, reason: "interview or contact through a chat app"}
+    - {pattern: "(social security|\\bssn\\b|bank account|routing number|credit card)[^.]{0,60}(required|provide|send|submit|needed)", weight: 25, reason: "asks for SSN or bank details up front"}
+    - {pattern: "\\bno interview\\b|hired (immediately|on the spot|same day)", weight: 20, reason: "hiring without an interview"}
+    - {pattern: "paid in (crypto|bitcoin)|crypto(currency)? wallet|gift cards?", weight: 30, reason: "crypto / gift-card payments"}
+    - {pattern: "reship|re-ship|package (forwarding|inspector|handler)|receive (and|&) (re)?ship", weight: 40, reason: "reshipping packages (classic scam)"}
+    - {pattern: "(earn|make)\\s+(up to\\s+)?\\$\\s?\\d[\\d,]*\\s*(\\+|or more)?\\s*(per|a|/)\\s*(week|day)", weight: 20, reason: "promises big weekly/daily earnings"}
+    - {pattern: "be your own boss|unlimited earning|commission[- ]only|financial freedom|residual income", weight: 25, reason: "MLM / commission-only language"}
+    - {pattern: "urgent(ly)? hiring|limited (spots|slots)|immediate start", weight: 8, reason: "pressure / urgency language"}
