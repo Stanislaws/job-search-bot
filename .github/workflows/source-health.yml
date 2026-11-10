@@ -1,0 +1,40 @@
+name: Source health check
+
+# Calls every job source once and fails if one of them breaks (API change, renamed
+# board, expired key…). GitHub emails you when a scheduled run fails.
+on:
+  push:
+    paths: ["jobbot/sources/**", "config.yaml", ".github/workflows/source-health.yml"]
+  schedule:
+    - cron: "23 15 * * 1"   # Mondays, mid-morning Central
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        source:
+          - Simplify internships
+          - Simplify new grad
+          - Adzuna
+          - JSearch
+          - The Muse
+          - Greenhouse watchlist
+          - Lever watchlist
+          - Ashby watchlist
+          - Workday watchlist
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Check ${{ matrix.source }}
+        env:
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          RAPIDAPI_KEY: ${{ github.event_name == 'push' && '' || secrets.RAPIDAPI_KEY }}   # don't spend JSearch quota on pushes
+        run: python -m jobbot.healthcheck "${{ matrix.source }}"
