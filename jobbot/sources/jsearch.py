@@ -43,6 +43,8 @@ def parse(payload) -> list[Job]:
                 },
             )
         )
+    if attempts and failures == attempts:
+        raise RuntimeError(f"all {attempts} requests failed")
     return jobs
 
 
@@ -55,6 +57,7 @@ def fetch(session, cfg) -> list[Job]:
         raise SkipSource("no RAPIDAPI_KEY secret")
     headers = {"X-RapidAPI-Key": key, "X-RapidAPI-Host": "jsearch.p.rapidapi.com"}
     jobs: list[Job] = []
+    failures = attempts = 0
     for q in cfg["search"]["queries"][: src.get("max_requests_per_run", 6)]:
         params = {
             "query": f"{q} in United States",
@@ -65,12 +68,16 @@ def fetch(session, cfg) -> list[Job]:
         }
         if "intern" in q:
             params["employment_types"] = "INTERN"
+        attempts += 1
         r = session.get(URL, headers=headers, params=params, timeout=40)
         if r.status_code == 429:
             log.warning("JSearch monthly quota reached; skipping remaining queries")
             break
         if r.status_code != 200:
             log.warning("JSearch %r → HTTP %s", q, r.status_code)
+            failures += 1
             continue
         jobs += parse(r.json())
+    if attempts and failures == attempts:
+        raise RuntimeError(f"all {attempts} requests failed")
     return jobs

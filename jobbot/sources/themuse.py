@@ -40,6 +40,8 @@ def fetch(session, cfg) -> list[Job]:
         params += [("level", lv) for lv in src.get("levels", [])]
         r = session.get(URL, params=params, timeout=30)
         if r.status_code != 200:
+            if page == 0:
+                raise RuntimeError(f"The Muse API → HTTP {r.status_code}")
             log.warning("The Muse page %s → HTTP %s", page, r.status_code)
             break
         payload = r.json()

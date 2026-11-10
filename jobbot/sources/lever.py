@@ -33,6 +33,8 @@ def parse(payload, company: str) -> list[Job]:
                 extra={"direct": True},
             )
         )
+    if attempts and failures == attempts:
+        raise RuntimeError(f"all {attempts} requests failed")
     return jobs
 
 
@@ -41,10 +43,15 @@ def fetch(session, cfg) -> list[Job]:
     if not companies:
         raise SkipSource("no companies listed")
     jobs: list[Job] = []
+    failures = attempts = 0
     for c in companies:
+        attempts += 1
         r = session.get(f"https://api.lever.co/v0/postings/{c}", params={"mode": "json"}, timeout=30)
         if r.status_code != 200:
             log.warning("Lever %r → HTTP %s", c, r.status_code)
+            failures += 1
             continue
         jobs += parse(r.json(), c)
+    if attempts and failures == attempts:
+        raise RuntimeError(f"all {attempts} requests failed")
     return jobs

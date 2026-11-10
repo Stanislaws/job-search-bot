@@ -22,6 +22,8 @@ def parse(payload, board: str) -> list[Job]:
                 extra={"direct": True},
             )
         )
+    if attempts and failures == attempts:
+        raise RuntimeError(f"all {attempts} requests failed")
     return jobs
 
 
@@ -30,10 +32,15 @@ def fetch(session, cfg) -> list[Job]:
     if not boards:
         raise SkipSource("no boards listed")
     jobs: list[Job] = []
+    failures = attempts = 0
     for board in boards:
+        attempts += 1
         r = session.get(f"https://boards-api.greenhouse.io/v1/boards/{board}/jobs", params={"content": "true"}, timeout=30)
         if r.status_code != 200:
             log.warning("Greenhouse board %r → HTTP %s", board, r.status_code)
+            failures += 1
             continue
         jobs += parse(r.json(), board)
+    if attempts and failures == attempts:
+        raise RuntimeError(f"all {attempts} requests failed")
     return jobs

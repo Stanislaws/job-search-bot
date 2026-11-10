@@ -10,6 +10,7 @@ def parse(payload, board: str) -> list[Job]:
     jobs = []
     for x in payload.get("jobs", []):
         if x.get("isListed") is False:
+            failures += 1
             continue
         locs = [x.get("location", "")] + [s.get("location", "") for s in x.get("secondaryLocations") or []]
         comp = (x.get("compensation") or {}).get("compensationTierSummary") or ""
@@ -28,6 +29,8 @@ def parse(payload, board: str) -> list[Job]:
                 extra={"direct": True, "pay_text": comp},
             )
         )
+    if attempts and failures == attempts:
+        raise RuntimeError(f"all {attempts} requests failed")
     return jobs
 
 
@@ -36,12 +39,17 @@ def fetch(session, cfg) -> list[Job]:
     if not boards:
         raise SkipSource("no boards listed")
     jobs: list[Job] = []
+    failures = attempts = 0
     for b in boards:
+        attempts += 1
         r = session.get(
             f"https://api.ashbyhq.com/posting-api/job-board/{b}", params={"includeCompensation": "true"}, timeout=30
         )
         if r.status_code != 200:
             log.warning("Ashby %r → HTTP %s", b, r.status_code)
+            failures += 1
             continue
         jobs += parse(r.json(), b)
+    if attempts and failures == attempts:
+        raise RuntimeError(f"all {attempts} requests failed")
     return jobs

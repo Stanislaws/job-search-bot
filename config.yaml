@@ -44,8 +44,8 @@ sources:
     enabled: true
     max_requests_per_run: 6   # free plan is ~200 requests/month → 6/day stays under it
     date_posted: 3days
-  themuse:
-    enabled: true
+  themuse:                    # public API returned 404 everywhere as of Nov 2026 → off
+    enabled: false
     categories: ["Data and Analytics", "Data Science"]
     levels: ["Internship", "Entry Level"]
     max_pages: 5

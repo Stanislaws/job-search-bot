@@ -34,6 +34,8 @@ def parse(payload) -> list[Job]:
                 extra={"snippet_only": True},
             )
         )
+    if attempts and failures == attempts:
+        raise RuntimeError(f"all {attempts} requests failed")
     return jobs
 
 
@@ -45,6 +47,7 @@ def fetch(session, cfg) -> list[Job]:
     if not (app_id and app_key):
         raise SkipSource("no ADZUNA_APP_ID / ADZUNA_APP_KEY secret")
     jobs: list[Job] = []
+    failures = attempts = 0
     for q in cfg["search"]["queries"]:
         params = {
             "app_id": app_id,
@@ -55,9 +58,13 @@ def fetch(session, cfg) -> list[Job]:
             "sort_by": "date",
             "content-type": "application/json",
         }
+        attempts += 1
         r = session.get(URL, params=params, timeout=30)
         if r.status_code != 200:
             log.warning("Adzuna %r → HTTP %s", q, r.status_code)
+            failures += 1
             continue
         jobs += parse(r.json())
+    if attempts and failures == attempts:
+        raise RuntimeError(f"all {attempts} requests failed")
     return jobs

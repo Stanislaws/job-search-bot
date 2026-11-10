@@ -55,9 +55,11 @@ def fetch(session, cfg) -> list[Job]:
     if not sites:
         raise SkipSource("no sites listed")
     out: list[Job] = []
+    failed_sites = 0
     for sc in sites:
         base = f"https://{sc['host']}/wday/cxs/{sc['tenant']}/{sc['site']}"
         found: dict[str, Job] = {}
+        ok_requests = 0
         for q in cfg["search"]["queries"]:
             for offset in range(0, PAGE * 3, PAGE):
                 body = {"appliedFacets": {}, "limit": PAGE, "offset": offset, "searchText": q}
@@ -65,11 +67,15 @@ def fetch(session, cfg) -> list[Job]:
                 if r.status_code != 200:
                     log.warning("Workday %s %r → HTTP %s", sc["name"], q, r.status_code)
                     break
+                ok_requests += 1
                 page = parse_listing(r.json(), sc)
                 for j in page:
                     found.setdefault(j.source_id, j)
                 if len(page) < PAGE:
                     break
+        if ok_requests == 0:
+            failed_sites += 1
+            continue
         for j in found.values():
             if title_weight(j.title, cfg)[0] <= 0:
                 continue
@@ -77,4 +83,6 @@ def fetch(session, cfg) -> list[Job]:
             if d.status_code == 200:
                 apply_detail(j, d.json())
             out.append(j)
+    if failed_sites == len(sites):
+        raise RuntimeError("every Workday site failed")
     return out
