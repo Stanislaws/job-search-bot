@@ -103,3 +103,33 @@ def test_merge_and_sections(cfg):
     )
     assert "Flagged as likely scams" in html_body and "bit.ly" not in html_body  # scam links are never rendered
     assert "Acme Insurance" in text_body
+
+
+class _FakeResponse:
+    def __init__(self, status, payload=None):
+        self.status_code, self._payload = status, payload or {}
+
+    def json(self):
+        return self._payload
+
+
+class _FakeSession:
+    def __init__(self, status):
+        self.status = status
+
+    def get(self, *a, **k):
+        return _FakeResponse(self.status)
+
+    post = get
+
+
+@pytest.mark.parametrize("mod,key", [(greenhouse, "greenhouse"), (lever, "lever"), (ashby, "ashby")])
+def test_source_raises_when_every_request_fails(cfg, mod, key):
+    c = {**cfg, "sources": {**cfg["sources"], key: ["acme"]}}
+    with pytest.raises(RuntimeError):
+        mod.fetch(_FakeSession(404), c)
+
+
+def test_workday_raises_when_site_fails(cfg):
+    with pytest.raises(RuntimeError):
+        workday.fetch(_FakeSession(500), cfg)

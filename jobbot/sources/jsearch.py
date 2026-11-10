@@ -43,8 +43,6 @@ def parse(payload) -> list[Job]:
                 },
             )
         )
-    if attempts and failures == attempts:
-        raise RuntimeError(f"all {attempts} requests failed")
     return jobs
 
 

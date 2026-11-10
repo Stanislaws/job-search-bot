@@ -10,7 +10,6 @@ def parse(payload, board: str) -> list[Job]:
     jobs = []
     for x in payload.get("jobs", []):
         if x.get("isListed") is False:
-            failures += 1
             continue
         locs = [x.get("location", "")] + [s.get("location", "") for s in x.get("secondaryLocations") or []]
         comp = (x.get("compensation") or {}).get("compensationTierSummary") or ""
@@ -29,8 +28,6 @@ def parse(payload, board: str) -> list[Job]:
                 extra={"direct": True, "pay_text": comp},
             )
         )
-    if attempts and failures == attempts:
-        raise RuntimeError(f"all {attempts} requests failed")
     return jobs
 
 

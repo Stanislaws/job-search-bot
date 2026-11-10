@@ -22,8 +22,6 @@ def parse(payload, board: str) -> list[Job]:
                 extra={"direct": True},
             )
         )
-    if attempts and failures == attempts:
-        raise RuntimeError(f"all {attempts} requests failed")
     return jobs
 
 

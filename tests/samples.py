@@ -133,6 +133,7 @@ ASHBY = {
          "isRemote": False, "descriptionPlain": "SQL, Python, experimentation. " * 15,
          "publishedAt": "2026-11-07T00:00:00.000Z", "employmentType": "FullTime",
          "jobUrl": "https://jobs.ashbyhq.com/acme/as1", "isListed": True},
+        {"id": "as2", "title": "Hidden Analyst", "isListed": False},
     ]
 }
 

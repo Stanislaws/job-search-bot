@@ -34,8 +34,6 @@ def parse(payload) -> list[Job]:
                 extra={"snippet_only": True},
             )
         )
-    if attempts and failures == attempts:
-        raise RuntimeError(f"all {attempts} requests failed")
     return jobs
 
 
